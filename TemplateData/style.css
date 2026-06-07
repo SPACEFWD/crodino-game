@@ -1,0 +1,26 @@
+html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden; background-color: #FDC500 }
+#unity-container { position: absolute }
+#unity-container { left: 50%; top: 50%; transform: translate(-50%, -50%) }
+#unity-canvas { background: #FDC500; outline: none }
+#unity-canvas:focus, #unity-canvas:focus-visible { outline: none }
+.unity-mobile #unity-canvas { width: 100%; height: 100% }
+/* Compact, responsive loader that fits any iframe (incl. small mobile embeds).
+   The old default was a 462x390 logo + 423px bar centered -> wider than a phone
+   iframe, so overflow:hidden clipped it off-screen and it looked like nothing
+   was happening. */
+#unity-loading-bar { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: none; width: min(72vw, 300px); text-align: center }
+#unity-loading-text { color: #FFFFFF; font-family: arial, sans-serif; font-weight: bold; font-size: clamp(14px, 3.5vw, 18px); margin-bottom: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.18) }
+#unity-logo { display: none }
+#unity-progress-bar-empty { width: 100%; height: 12px; margin: 0; background: rgba(255,255,255,0.35); border-radius: 999px; overflow: hidden }
+#unity-progress-bar-full { height: 100%; width: 0; background: #FFFFFF; border-radius: 999px; transition: width 0.2s ease }
+#unity-footer { display: none }
+.unity-mobile #unity-footer { display: none }
+#unity-webgl-logo { float:left; width: 204px; height: 38px; background: url('webgl-logo.png') no-repeat center }
+#unity-build-title { float: right; margin-right: 10px; line-height: 38px; font-family: arial; font-size: 18px; color: #FFFFFF }
+#unity-fullscreen-button { float: right; width: 38px; height: 38px; background: url('fullscreen-button.png') no-repeat center }
+#unity-warning { position: absolute; left: 50%; top: 5%; transform: translate(-50%); background: white; padding: 10px; display: none }
+#unity-load-error { display: none; position: absolute; inset: 0; background: #FDC500; align-items: center; justify-content: center; text-align: center; font-family: arial, sans-serif; padding: 24px; box-sizing: border-box; z-index: 10 }
+#unity-load-error .ule-title { color: #FFFFFF; font-size: clamp(20px, 4vw, 32px); font-weight: bold; margin-bottom: 12px }
+#unity-load-error .ule-text { color: #FFFFFF; font-size: clamp(14px, 2.5vw, 18px); max-width: 520px; margin: 0 auto 22px; line-height: 1.45 }
+#unity-load-error button { background: #FFFFFF; color: #C98A00; border: 0; border-radius: 999px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer }
+

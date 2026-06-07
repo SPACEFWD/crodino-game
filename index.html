@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Unity Web Player | Crodino</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+  </head>
+  <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=540 tabindex="-1"></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-loading-text">The game is loading…</div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-load-error">
+        <div class="ule-card">
+          <div class="ule-title">Oops — couldn't load the game</div>
+          <div class="ule-text">Your connection dropped while the game was loading. Check your connection and try again.</div>
+          <button id="unity-load-error-retry" type="button">Try again</button>
+        </div>
+      </div>
+      <div id="unity-footer">
+        <div id="unity-logo-title-footer"></div>
+<!--         <div id="unity-fullscreen-button"></div> -->
+        <div id="unity-build-title">Crodino</div>
+      </div>
+    </div>
+
+    <script>
+      // --- Mobile keyboard crash mitigation (Unity WebGL InvalidStateError) ---
+      // On some mobile browsers Unity's _JS_MobileKeyboard_SetTextSelection calls
+      // setSelectionRange on an input in a state that throws InvalidStateError,
+      // which crashes the game during text entry (e.g. typing name/email for the
+      // leaderboard). Swallow that specific failure so input keeps working.
+      (function () {
+        function guard(proto) {
+          if (!proto || !proto.setSelectionRange) return;
+          var orig = proto.setSelectionRange;
+          proto.setSelectionRange = function () {
+            try { return orig.apply(this, arguments); }
+            catch (e) { /* ignore Unity mobile-keyboard InvalidStateError */ }
+          };
+        }
+        try { guard(window.HTMLInputElement && HTMLInputElement.prototype); } catch (e) {}
+        try { guard(window.HTMLTextAreaElement && HTMLTextAreaElement.prototype); } catch (e) {}
+      })();
+
+      // --- Localisation (EN/FR/NL) by BROWSER language (navigator.language) ---
+      var T = (function () {
+        var I18N = {
+          en: {
+            loading: "The game is loading…",
+            loadFailTitle: "Oops — couldn't load the game",
+            loadFailText: "Your connection dropped while the game was loading. Check your connection and try again.",
+            crashTitle: "Oops — something went wrong",
+            crashText: "The game hit a snag. Please reload to keep playing.",
+            glTitle: "Display needs a refresh",
+            glText: "The game's graphics reset. Please reload to keep playing.",
+            retry: "Try again"
+          },
+          fr: {
+            loading: "Le jeu se charge…",
+            loadFailTitle: "Oups — le jeu n'a pas pu se charger",
+            loadFailText: "La connexion a été interrompue pendant le chargement. Vérifiez votre connexion et réessayez.",
+            crashTitle: "Oups — un problème est survenu",
+            crashText: "Le jeu a rencontré un souci. Veuillez recharger pour continuer à jouer.",
+            glTitle: "L'affichage doit être actualisé",
+            glText: "L'affichage du jeu a été réinitialisé. Veuillez recharger pour continuer à jouer.",
+            retry: "Réessayer"
+          },
+          nl: {
+            loading: "De game wordt geladen…",
+            loadFailTitle: "Oeps — de game kon niet laden",
+            loadFailText: "Je verbinding werd onderbroken tijdens het laden. Controleer je verbinding en probeer opnieuw.",
+            crashTitle: "Oeps — er ging iets mis",
+            crashText: "De game liep vast. Herlaad om verder te spelen.",
+            glTitle: "Beeld moet vernieuwd worden",
+            glText: "Het beeld van de game is gereset. Herlaad om verder te spelen.",
+            retry: "Opnieuw proberen"
+          }
+        };
+        var lang = "en";
+        try {
+          var l = (navigator.language || "en").toLowerCase();
+          if (l.indexOf("fr") === 0) lang = "fr";
+          else if (l.indexOf("nl") === 0) lang = "nl";
+        } catch (e) {}
+        return I18N[lang];
+      })();
+
+      // --- Graceful runtime-crash handling ---
+      // If the compiled game throws an uncaught exception at runtime, Unity pops a
+      // native alert ("...running the Unity content... Uncaught ...") on a now-dead
+      // instance. Intercept that and show our branded reload panel instead. This does
+      // NOT fix the underlying game bug (it's in compiled C#) — it only fails
+      // gracefully so the user gets a clean reload instead of a system dialog.
+      (function () {
+        var _alert = (typeof window.alert === "function") ? window.alert.bind(window) : null;
+        window.alert = function (msg) {
+          if (typeof msg === "string" && /running the Unity content|Uncaught/i.test(msg)) {
+            console.error("Unity runtime error (shown as reload panel):", msg);
+            try {
+              var t = document.querySelector("#unity-load-error .ule-title");
+              var x = document.querySelector("#unity-load-error .ule-text");
+              if (t) t.textContent = T.crashTitle;
+              if (x) x.textContent = T.crashText;
+              if (typeof showLoadError === "function") showLoadError();
+            } catch (e) {}
+            return;
+          }
+          if (_alert) return _alert(msg);
+        };
+      })();
+
+      var canvas = document.querySelector("#unity-canvas");
+
+      function unityShowBanner(msg, type) {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      function fitWindowCanvasSize(){
+        // Measure the iframe's REAL rendered box. documentElement.clientWidth/Height
+        // reflects the actual visible viewport of this document; window.innerHeight
+        // can over-report inside a mobile iframe and make the canvas overflow
+        // (clipping the game top & bottom). Fall back to innerWidth/Height.
+        var winWidth  = document.documentElement.clientWidth  || window.innerWidth;
+        var winHeight = document.documentElement.clientHeight || window.innerHeight;
+        const appWidth = 960;
+        const appHeight = 540;
+        const scale = Math.min((winWidth / appWidth), (winHeight / appHeight));
+
+        canvas.style.width = (appWidth * scale) + 'px';
+        canvas.style.height = (appHeight * scale) + 'px';
+      }
+
+      function windowResizeEvent(){
+        var timeoutId = 0;
+        const resizeDelay = 300;
+        window.onresize = () => {
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(()=>{
+            fitWindowCanvasSize();
+          }, resizeDelay);
+        };
+      }
+
+      var buildUrl = "Build";
+
+      // --- Compressed-first with automatic fallback to uncompressed ---
+      // Compressed (.unityweb, ~35MB) downloads ~2.5x smaller but relies on Unity's
+      // JS decompression fallback (GitHub Pages can't send Content-Encoding), which
+      // can fail on some mobile/slow setups. So: try compressed first; if it fails,
+      // reload into the uncompressed build (~86MB, always reliable). The choice is
+      // remembered (URL param + localStorage) so a device that fell back doesn't pay
+      // the double-load again.
+      var FALLBACK_KEY = "crodino_build_mode";
+      var useUncompressed = false;
+      try {
+        var _p = new URLSearchParams(window.location.search);
+        if (_p.get("build") === "uncompressed") useUncompressed = true;
+        else if (window.localStorage && localStorage.getItem(FALLBACK_KEY) === "uncompressed") useUncompressed = true;
+      } catch (e) {}
+
+      var loaderUrl, config;
+      if (useUncompressed) {
+        loaderUrl = buildUrl + "/build100_uncompressed.loader.js";
+        config = {
+          arguments: [],
+          dataUrl: buildUrl + "/build100_uncompressed.data",
+          frameworkUrl: buildUrl + "/build100_uncompressed.framework.js",
+          codeUrl: buildUrl + "/build100_uncompressed.wasm",
+          streamingAssetsUrl: "StreamingAssets",
+          companyName: "DefaultCompany", productName: "Crodino", productVersion: "1.0.0",
+          showBanner: unityShowBanner,
+        };
+      } else {
+        loaderUrl = buildUrl + "/build100.loader.js";
+        config = {
+          arguments: [],
+          dataUrl: buildUrl + "/build100.data.unityweb",
+          frameworkUrl: buildUrl + "/build100.framework.js.unityweb",
+          codeUrl: buildUrl + "/build100.wasm.unityweb",
+          streamingAssetsUrl: "StreamingAssets",
+          companyName: "DefaultCompany", productName: "Crodino", productVersion: "1.0.0",
+          showBanner: unityShowBanner,
+        };
+      }
+
+      var inIframe = (window.self !== window.top);
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Only set a DEVICE-sized viewport when the game is the top-level page.
+        // Inside an iframe this would size the canvas to the whole device and
+        // overflow the embed -> the game gets clipped at the top on mobile.
+        // When embedded, the parent page owns the viewport and we size the
+        // canvas to the iframe box via fitWindowCanvasSize() below.
+        if (!inIframe) {
+          var meta = document.createElement('meta');
+          meta.name = 'viewport';
+          meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+          document.getElementsByTagName('head')[0].appendChild(meta);
+        }
+        document.querySelector("#unity-container").className = "unity-mobile";
+      }
+      // Fit-to-window (preserves 16:9 aspect, no distortion) on all devices.
+      fitWindowCanvasSize();
+      // IMPORTANT: re-fit only AFTER resizing settles. Resizing the WebGL canvas
+      // on every frame of a drag-resize can lose the WebGL context (blank canvas
+      // that needs a reload), so we debounce all re-fit triggers.
+      var _fitTimer = 0;
+      function scheduleFit() {
+        clearTimeout(_fitTimer);
+        _fitTimer = setTimeout(fitWindowCanvasSize, 250);
+      }
+      // Catches orientation change, mobile address-bar show/hide, and iframe-box
+      // changes (the mobile-clip cause) — all debounced.
+      window.addEventListener("resize", scheduleFit);
+      window.addEventListener("orientationchange", scheduleFit);
+      if (window.ResizeObserver) {
+        try { new ResizeObserver(scheduleFit).observe(document.documentElement); } catch (e) {}
+      }
+      // A couple of delayed re-fits to settle the initial mobile layout.
+      setTimeout(fitWindowCanvasSize, 300);
+      setTimeout(fitWindowCanvasSize, 1200);
+
+      // Safety net: if the WebGL context is ever lost (Unity can't recover it),
+      // show the branded reload panel instead of a silent blank canvas.
+      canvas.addEventListener("webglcontextlost", function (e) {
+        e.preventDefault();
+        console.error("WebGL context lost");
+        try {
+          var t = document.querySelector("#unity-load-error .ule-title");
+          var x = document.querySelector("#unity-load-error .ule-text");
+          if (t) t.textContent = T.glTitle;
+          if (x) x.textContent = T.glText;
+          if (typeof showLoadError === "function") showLoadError();
+        } catch (err) {}
+      }, false);
+
+      // Apply localised copy (browser language) to the loading label, the
+      // load-error panel and the retry button.
+      (function () {
+        var lt = document.getElementById("unity-loading-text");
+        if (lt) lt.textContent = T.loading;
+        var t = document.querySelector("#unity-load-error .ule-title");
+        var x = document.querySelector("#unity-load-error .ule-text");
+        var r = document.getElementById("unity-load-error-retry");
+        if (t) t.textContent = T.loadFailTitle;
+        if (x) x.textContent = T.loadFailText;
+        if (r) r.textContent = T.retry;
+      })();
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      // Branded "couldn't load" panel instead of the browser's native alert().
+      function showLoadError() {
+        var bar = document.querySelector("#unity-loading-bar");
+        if (bar) bar.style.display = "none";
+        var el = document.querySelector("#unity-load-error");
+        if (el) el.style.display = "flex";
+      }
+      var retryBtn = document.querySelector("#unity-load-error-retry");
+      if (retryBtn) retryBtn.onclick = function () { location.reload(); };
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+
+      // Reload into the uncompressed build (used when the compressed one fails).
+      function fallbackToUncompressed(reason) {
+        console.warn("Compressed build failed (" + reason + "); falling back to uncompressed.");
+        try { localStorage.setItem(FALLBACK_KEY, "uncompressed"); } catch (e) {}
+        try {
+          var u = new URL(window.location.href);
+          u.searchParams.set("build", "uncompressed");
+          window.location.replace(u.toString());
+        } catch (e) { showLoadError(); }
+      }
+
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+
+          window.unityInstance = unityInstance;
+
+          document.querySelector("#unity-loading-bar").style.display = "none";
+
+          windowResizeEvent();
+
+        }).catch((message) => {
+          console.error("Unity load error:", message);
+          // Compressed failed (e.g. "subarray"/"Load failed") -> retry uncompressed.
+          // If we're already on uncompressed, show the branded reload panel.
+          if (!useUncompressed) fallbackToUncompressed("createUnityInstance: " + message);
+          else showLoadError();
+        });
+      };
+
+      // Loader script itself failed to download.
+      script.onerror = () => {
+        console.error("Unity loader failed to download");
+        if (!useUncompressed) fallbackToUncompressed("loader download failed");
+        else showLoadError();
+      };
+
+      document.body.appendChild(script);
+    </script>
+	
+  <!-- FIREBASE -->
+  <script type="module">
+
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+    import
+    {
+      getFirestore,
+      collection,
+      addDoc,
+      query,
+      orderBy,
+      limit,
+      getDocs
+    }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    import
+    {
+      getAnalytics,
+      logEvent
+    }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+    const firebaseConfig =
+    {
+      apiKey: "AIzaSyArgtNARx6S--KLruy5KzRzc4iqziBkc7o",
+
+      authDomain: "game-crodino-com.firebaseapp.com",
+
+      projectId: "game-crodino-com",
+
+      storageBucket: "game-crodino-com.firebasestorage.app",
+
+      messagingSenderId: "696122220783",
+
+      appId: "1:696122220783:web:95026f6ac34e383430bb1a",
+
+      measurementId: "G-GMBEQ54NKN"
+    };
+
+    const app = initializeApp(firebaseConfig);
+
+    const db = getFirestore(app);
+
+    // =========================
+    // ANALYTICS  (consent-gated)
+    // =========================
+    // Analytics is OFF by default and only turns on once the embedding page
+    // (Cookiebot) grants "statistics" consent. Two ways to grant:
+    //   1. postMessage from the parent page  -> { type: "consent", analytics: true|false }
+    //      (live: handles consent changes/withdrawal without reloading the game)
+    //   2. URL param fallback                -> ?analyticsConsent=granted
+    //      (one-shot; useful for the initial decision or for testing)
+    // Firestore score-saving below is NOT gated here (it's a user-initiated
+    // leaderboard action, a separate basis from statistics cookies).
+
+    // Origins allowed to send consent messages = the parent pages that embed the game.
+    const ALLOWED_PARENT_ORIGINS = [
+      "https://game.crodino.com",      // production
+      "https://dev.game.crodino.com"   // development
+    ];
+
+    let analytics = null;          // not initialised until consent is granted
+    let analyticsConsent = false;
+
+    // When embedded (the normal case on the website), the game does NOT track
+    // in-iframe — Safari/Firefox block third-party storage. Instead it forwards
+    // events UP to the parent page, which records them first-party (reliable in
+    // every browser) and gates them on Cookiebot consent. In-iframe Firebase
+    // Analytics below is only used when the game is opened standalone (not embedded).
+    const isEmbedded = !!(window.parent && window.parent !== window);
+
+    function enableAnalytics()
+    {
+      if (analytics || !analyticsConsent) return;
+      try
+      {
+        analytics = getAnalytics(app);
+        console.log("[consent] analytics ENABLED");
+      }
+      catch (e)
+      {
+        console.error("[consent] analytics init failed:", e);
+      }
+    }
+
+    function setAnalyticsConsent(granted)
+    {
+      analyticsConsent = !!granted;
+      if (analyticsConsent)
+      {
+        enableAnalytics();
+      }
+      else
+      {
+        analytics = null;          // stop sending further events
+        console.log("[consent] analytics DISABLED");
+      }
+    }
+
+    // URL-param fallback for the initial decision / testing.
+    try
+    {
+      if (new URLSearchParams(window.location.search).get("analyticsConsent") === "granted")
+      {
+        analyticsConsent = true;
+      }
+    }
+    catch (e) {}
+
+    // Live consent updates from the parent page.
+    window.addEventListener("message", function (event)
+    {
+      if (ALLOWED_PARENT_ORIGINS.indexOf(event.origin) === -1) return; // trusted parents only
+      const data = event.data || {};
+      if (data.type === "consent" && typeof data.analytics === "boolean")
+      {
+        setAnalyticsConsent(data.analytics);
+      }
+    });
+
+    // If the param already granted consent, initialise now.
+    enableAnalytics();
+
+    // Tell the parent we're ready to receive consent (handles load-order races).
+    try { window.parent.postMessage({ type: "crodino-consent-ready" }, "*"); } catch (e) {}
+
+    window.LogEvent = function (eventName, paramsJson)
+    {
+      // Optional event parameters arrive as a JSON string from Unity.
+      var paramsObj = null;
+      if (paramsJson && String(paramsJson).trim() !== "")
+      {
+        try { paramsObj = JSON.parse(paramsJson); }
+        catch (e) { console.error("Invalid JSON params", e); paramsObj = null; }
+      }
+
+      // Embedded: forward to the first-party parent page. The parent records the
+      // event (gated by Cookiebot consent) -> reliable in all browsers incl. Safari.
+      if (isEmbedded)
+      {
+        ALLOWED_PARENT_ORIGINS.forEach(function (origin)
+        {
+          try { window.parent.postMessage({ type: "track", event: eventName, params: paramsObj }, origin); }
+          catch (e) {}
+        });
+        return;
+      }
+
+      // Standalone: use in-iframe Firebase Analytics, gated by ?analyticsConsent=granted.
+      if (!analyticsConsent || !analytics)
+      {
+        return; // no consent -> do not track
+      }
+      try
+      {
+        if (paramsObj) { logEvent(analytics, eventName, paramsObj); }
+        else { logEvent(analytics, eventName); }
+        console.log("Analytics Event:", eventName, paramsObj || "");
+      }
+      catch (e)
+      {
+        console.error("LogEvent Error:", e);
+      }
+    };
+
+    // =========================
+    // SAVE SCORE
+    // =========================
+    // Unity sends the full record as a JSON string; we store it as-is, so the
+    // field schema (name, email, score, time, created_at, fit_profile,
+    // ingredients_count, red_count, yellow_count, enemy_knockouts, ...) is owned
+    // by the build and matches the Crodino team's Firestore rules.
+    window.SaveScore = async function (jsonData)
+    {
+      console.log("SaveScore js:", jsonData);
+      let data = {};
+      try { data = JSON.parse(jsonData); }
+      catch (e) { console.error("Invalid JSON in SaveScore:", e); return; }
+
+      try
+      {
+        await addDoc(collection(db, "scores"), { ...data });
+        console.log("Score saved successfully");
+      }
+      catch (e)
+      {
+        console.error("SaveScore Error:", e);
+      }
+    };
+
+    // =========================
+    // LOAD SCORES
+    // =========================
+
+    window.GetTopScores = async function ()
+    {
+      try
+      {
+        console.log("GetTopScores llamado");
+
+        // Fetch a buffer of top scores, then rank precisely below. We sort
+        // client-side (rather than a 2-field Firestore orderBy) so no composite
+        // index is required in the Firebase console.
+        const q = query(
+          collection(db, "scores"),
+          orderBy("score", "desc"),
+          limit(50)
+        );
+
+        const snapshot = await getDocs(q);
+
+        let results = [];
+
+        snapshot.forEach(doc =>
+        {
+          results.push(doc.data());
+        });
+
+        // Ranking: highest score wins; ties broken by fastest time (lowest seconds).
+        results.sort(function (a, b)
+        {
+          var sa = (typeof a.score === "number") ? a.score : -Infinity;
+          var sb = (typeof b.score === "number") ? b.score : -Infinity;
+          if (sb !== sa) return sb - sa;                 // score descending
+          var ta = (typeof a.time === "number") ? a.time : Infinity;
+          var tb = (typeof b.time === "number") ? b.time : Infinity;
+          return ta - tb;                                // time ascending (faster = better)
+        });
+
+        results = results.slice(0, 10);
+
+        console.log("Scores:", results);
+
+        deliverScores(results);
+      }
+      catch (e)
+      {
+        // Firestore request blocked (ad blocker -> net::ERR_BLOCKED_BY_CLIENT) or
+        // offline. Still hand the game an EMPTY leaderboard so it can't hang or
+        // crash waiting on a callback that never arrives (e.g. at level transition).
+        console.error("GetTopScores failed; sending empty leaderboard:", e);
+        deliverScores([]);
+      }
+
+      function deliverScores(arr)
+      {
+        try
+        {
+          if (window.unityInstance)
+          {
+            window.unityInstance.SendMessage("FirebaseManager", "OnScoresLoaded", JSON.stringify(arr));
+          }
+          else
+          {
+            console.log("unityInstance not ready for OnScoresLoaded");
+          }
+        }
+        catch (e) { console.error("OnScoresLoaded dispatch error:", e); }
+      }
+    };
+
+  </script>
+
+  </body>
+</html>

@@ -24,13 +24,15 @@ html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden;
 #unity-load-error .ule-text { color: #FFFFFF; font-size: clamp(14px, 2.5vw, 18px); max-width: 520px; margin: 0 auto 22px; line-height: 1.45 }
 #unity-load-error button { background: #FFFFFF; color: #C98A00; border: 0; border-radius: 999px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer }
 
-/* Branded load + terms screen: the brand asset (crodino-loadscreen.png) shown with
-   `contain` so the logo/headline are NEVER cropped; the letterbox fill is the same
-   brand yellow so the margins are invisible. A bottom band (also brand yellow)
-   overlays the sentence, the load bar and the Play CTA, blending into the image's
-   open lower area. */
-#crodino-gate { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; box-sizing: border-box; font-family: arial, sans-serif; background-color: #FDC500; background-image: url("crodino-loadscreen.png"); background-repeat: no-repeat; background-position: center top; background-size: contain }
-#crodino-gate .cg-inner { width: 100%; box-sizing: border-box; background: #FDC500; text-align: center; padding: 16px clamp(16px, 5vw, 40px) clamp(18px, 4vh, 28px) }
+/* Branded load + terms screen: the brand asset (crodino-loadscreen.png) fills the
+   whole gate with `cover` — no flat-colour letterbox, so there is never a visible
+   seam/rectangle where a band meets the artwork (the previous `contain` + solid
+   band showed a hard edge in a slightly different yellow on some ratios). The
+   artwork's wide margins mean cover's side-crop doesn't touch the logo/headline at
+   landscape ratios. Controls sit on a SOFT gradient scrim (transparent -> yellow)
+   rather than a hard rectangle, so there is no visible edge cutting the image. */
+#crodino-gate { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; box-sizing: border-box; font-family: arial, sans-serif; background-color: #FDC500; background-image: url("crodino-loadscreen.png"); background-repeat: no-repeat; background-position: center center; background-size: cover }
+#crodino-gate .cg-inner { width: 100%; box-sizing: border-box; text-align: center; padding: 52px clamp(16px, 5vw, 40px) clamp(18px, 4vh, 28px); background: linear-gradient(to top, rgba(253,197,0,0.97) 0%, rgba(253,197,0,0.92) 38%, rgba(253,197,0,0.55) 72%, rgba(253,197,0,0) 100%) }
 #crodino-gate-text { color: #FFFFFF; font-size: clamp(13px, 2.6vw, 18px); line-height: 1.45; max-width: 620px; margin: 0 auto 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.18) }
 #crodino-gate-bar { width: min(72vw, 320px); height: 12px; margin: 0 auto 16px; background: rgba(255,255,255,0.35); border-radius: 999px; overflow: hidden }
 #crodino-gate-bar-full { height: 100%; width: 0; background: #FFFFFF; border-radius: 999px; transition: width 0.2s ease }

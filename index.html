@@ -203,25 +203,25 @@
 
       var loaderUrl, config;
       if (useUncompressed) {
-        loaderUrl = buildUrl + "/build103_uncompressed.loader.js";
+        loaderUrl = buildUrl + "/build105_uncompressed.loader.js";
         config = {
           arguments: [],
-          dataUrl: buildUrl + "/build103_uncompressed.data",
-          frameworkUrl: buildUrl + "/build103_uncompressed.framework.js",
-          codeUrl: buildUrl + "/build103_uncompressed.wasm",
+          dataUrl: buildUrl + "/build105_uncompressed.data",
+          frameworkUrl: buildUrl + "/build105_uncompressed.framework.js",
+          codeUrl: buildUrl + "/build105_uncompressed.wasm",
           streamingAssetsUrl: "StreamingAssets",
-          companyName: "DefaultCompany", productName: "Crodino", productVersion: "1.0.3",
+          companyName: "DefaultCompany", productName: "Crodino", productVersion: "1.0.5",
           showBanner: unityShowBanner,
         };
       } else {
-        loaderUrl = buildUrl + "/build103.loader.js";
+        loaderUrl = buildUrl + "/build105.loader.js";
         config = {
           arguments: [],
-          dataUrl: buildUrl + "/build103.data.unityweb",
-          frameworkUrl: buildUrl + "/build103.framework.js.unityweb",
-          codeUrl: buildUrl + "/build103.wasm.unityweb",
+          dataUrl: buildUrl + "/build105.data.unityweb",
+          frameworkUrl: buildUrl + "/build105.framework.js.unityweb",
+          codeUrl: buildUrl + "/build105.wasm.unityweb",
           streamingAssetsUrl: "StreamingAssets",
-          companyName: "DefaultCompany", productName: "Crodino", productVersion: "1.0.3",
+          companyName: "DefaultCompany", productName: "Crodino", productVersion: "1.0.5",
           showBanner: unityShowBanner,
         };
       }
@@ -537,13 +537,6 @@
       try { data = JSON.parse(jsonData); }
       catch (e) { console.error("Invalid JSON in SaveScore:", e); return; }
 
-      // Remember the player's own submission so GetTopScores can guarantee it's in
-      // the returned list — even when it's outside the top 10. Without this, the
-      // game's "find my row to highlight" lookup returns null and crashes the build
-      // once the board has 10+ entries. Captured BEFORE the await so it's available
-      // even if GetTopScores runs concurrently.
-      try { window.__crodinoLastScore = data; } catch (e) {}
-
       try
       {
         await addDoc(collection(db, "scores"), { ...data });
@@ -595,23 +588,6 @@
         });
 
         results = results.slice(0, 10);
-
-        // Guarantee the player's own just-submitted row is present, so the game's
-        // "find my entry" lookup can't return null and crash when the player is
-        // outside the top 10. If it's not already in the top 10, append it.
-        try {
-          var last = window.__crodinoLastScore;
-          if (last) {
-            var inTop = results.some(function (r) {
-              return r &&
-                String(r.name)  === String(last.name) &&
-                String(r.email) === String(last.email) &&
-                Number(r.score) === Number(last.score) &&
-                Number(r.time)  === Number(last.time);
-            });
-            if (!inTop) results.push(last);
-          }
-        } catch (e) { console.error("append-own-score guard failed:", e); }
 
         console.log("Scores:", results);
 

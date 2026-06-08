@@ -24,3 +24,9 @@ html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden;
 #unity-load-error .ule-text { color: #FFFFFF; font-size: clamp(14px, 2.5vw, 18px); max-width: 520px; margin: 0 auto 22px; line-height: 1.45 }
 #unity-load-error button { background: #FFFFFF; color: #C98A00; border: 0; border-radius: 999px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer }
 
+/* Terms gate shown before the game */
+#crodino-gate { position: fixed; inset: 0; z-index: 50; background: #FDC500; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; box-sizing: border-box; font-family: arial, sans-serif }
+#crodino-gate .cg-inner { max-width: 560px }
+#crodino-gate-text { color: #FFFFFF; font-size: clamp(15px, 3vw, 20px); line-height: 1.5; margin-bottom: 22px; text-shadow: 0 1px 2px rgba(0,0,0,0.18) }
+#crodino-gate-play { background: #FFFFFF; color: #C98A00; border: 0; border-radius: 999px; padding: 14px 44px; font-size: 18px; font-weight: bold; cursor: pointer }
+

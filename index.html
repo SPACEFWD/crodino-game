@@ -32,6 +32,14 @@
       </div>
     </div>
 
+    <!-- Terms gate: shown over the game on load; dismissed by the Play button. -->
+    <div id="crodino-gate">
+      <div class="cg-inner">
+        <div id="crodino-gate-text">By playing this game, you agree to the terms and conditions of this game.</div>
+        <button id="crodino-gate-play" type="button">Play</button>
+      </div>
+    </div>
+
     <script>
       // --- Mobile keyboard crash mitigation (Unity WebGL InvalidStateError) ---
       // On some mobile browsers Unity's _JS_MobileKeyboard_SetTextSelection calls
@@ -63,7 +71,9 @@
             crashBtn: "Play again",
             glTitle: "Display needs a refresh",
             glText: "The game's graphics reset. Please reload to keep playing.",
-            retry: "Try again"
+            retry: "Try again",
+            gateText: "By playing this game, you agree to the terms and conditions of this game.",
+            gateBtn: "Play"
           },
           fr: {
             loading: "Le jeu se charge…",
@@ -74,7 +84,9 @@
             crashBtn: "Rejouer",
             glTitle: "L'affichage doit être actualisé",
             glText: "L'affichage du jeu a été réinitialisé. Veuillez recharger pour continuer à jouer.",
-            retry: "Réessayer"
+            retry: "Réessayer",
+            gateText: "En jouant à ce jeu, tu acceptes les conditions générales de ce jeu.",
+            gateBtn: "Jouer"
           },
           nl: {
             loading: "De game wordt geladen…",
@@ -85,7 +97,9 @@
             crashBtn: "Opnieuw spelen",
             glTitle: "Beeld moet vernieuwd worden",
             glText: "Het beeld van de game is gereset. Herlaad om verder te spelen.",
-            retry: "Opnieuw proberen"
+            retry: "Opnieuw proberen",
+            gateText: "Door dit spel te spelen, ga je akkoord met de algemene voorwaarden van dit spel.",
+            gateBtn: "Spelen"
           }
         };
         var lang = "en";
@@ -274,6 +288,15 @@
         if (t) t.textContent = T.loadFailTitle;
         if (x) x.textContent = T.loadFailText;
         if (r) r.textContent = T.retry;
+        // Terms gate (shown over the game until the player taps Play).
+        var gtext = document.getElementById("crodino-gate-text");
+        var gplay = document.getElementById("crodino-gate-play");
+        if (gtext) gtext.textContent = T.gateText;
+        if (gplay) gplay.textContent = T.gateBtn;
+        if (gplay) gplay.onclick = function () {
+          var gate = document.getElementById("crodino-gate");
+          if (gate) gate.style.display = "none";
+        };
       })();
 
       document.querySelector("#unity-loading-bar").style.display = "block";

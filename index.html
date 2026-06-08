@@ -32,11 +32,17 @@
       </div>
     </div>
 
-    <!-- Terms gate: shown over the game on load; dismissed by the Play button. -->
+    <!-- Branded load + terms screen: a full-bleed background image with a bottom
+         band overlaying the sentence, the load bar and the Play CTA. The sentence
+         carries the 18+ confirmation (accepting the terms = confirming 18+), so no
+         separate age gate is needed. Dismissed by the Play button once loaded. -->
     <div id="crodino-gate">
       <div class="cg-inner">
-        <div id="crodino-gate-text">By playing this game, you agree to the terms and conditions.</div>
-        <button id="crodino-gate-play" type="button">Play</button>
+        <div id="crodino-gate-text">By playing, you confirm you are 18 or older and agree to the terms and conditions.</div>
+        <div id="crodino-gate-bar" aria-hidden="true">
+          <div id="crodino-gate-bar-full"></div>
+        </div>
+        <button id="crodino-gate-play" type="button" disabled>Loading…</button>
       </div>
     </div>
 
@@ -72,8 +78,9 @@
             glTitle: "Display needs a refresh",
             glText: "The game's graphics reset. Please reload to keep playing.",
             retry: "Try again",
-            gateText: "By playing this game, you agree to the terms and conditions.",
-            gateBtn: "Play"
+            gateText: "By playing, you confirm you are 18 or older and agree to the terms and conditions.",
+            gateBtn: "Play",
+            gateLoading: "Loading…"
           },
           fr: {
             loading: "Le jeu se charge…",
@@ -85,8 +92,9 @@
             glTitle: "L'affichage doit être actualisé",
             glText: "L'affichage du jeu a été réinitialisé. Veuillez recharger pour continuer à jouer.",
             retry: "Réessayer",
-            gateText: "En jouant à ce jeu, tu acceptes les conditions générales.",
-            gateBtn: "Jouer"
+            gateText: "En jouant, tu confirmes avoir 18 ans ou plus et tu acceptes les conditions générales.",
+            gateBtn: "Jouer",
+            gateLoading: "Chargement…"
           },
           nl: {
             loading: "De game wordt geladen…",
@@ -98,8 +106,9 @@
             glTitle: "Beeld moet vernieuwd worden",
             glText: "Het beeld van de game is gereset. Herlaad om verder te spelen.",
             retry: "Opnieuw proberen",
-            gateText: "Door dit spel te spelen, ga je akkoord met de algemene voorwaarden.",
-            gateBtn: "Spelen"
+            gateText: "Door te spelen, bevestig je dat je 18 jaar of ouder bent en ga je akkoord met de algemene voorwaarden.",
+            gateBtn: "Spelen",
+            gateLoading: "Laden…"
           }
         };
         var lang = "en";
@@ -292,7 +301,9 @@
         var gtext = document.getElementById("crodino-gate-text");
         var gplay = document.getElementById("crodino-gate-play");
         if (gtext) gtext.textContent = T.gateText;
-        if (gplay) gplay.textContent = T.gateBtn;
+        // Button stays disabled showing the "loading" label until Unity finishes
+        // (see setGateReady); only then does it become the Play CTA.
+        if (gplay) gplay.textContent = T.gateLoading || T.gateBtn;
         if (gplay) gplay.onclick = function () {
           var gate = document.getElementById("crodino-gate");
           if (gate) gate.style.display = "none";
@@ -305,8 +316,21 @@
       function showLoadError() {
         var bar = document.querySelector("#unity-loading-bar");
         if (bar) bar.style.display = "none";
+        // The branded load/terms screen sits on top (z-index 50) — hide it so the
+        // error panel is actually visible if loading fails.
+        var gate = document.getElementById("crodino-gate");
+        if (gate) gate.style.display = "none";
         var el = document.querySelector("#unity-load-error");
         if (el) el.style.display = "flex";
+      }
+
+      // Flip the load/terms screen from "loading" to "ready": fill the bar and turn
+      // the disabled placeholder button into the live Play CTA.
+      function setGateReady() {
+        var gf = document.getElementById("crodino-gate-bar-full");
+        if (gf) gf.style.width = "100%";
+        var gp = document.getElementById("crodino-gate-play");
+        if (gp) { gp.disabled = false; gp.textContent = T.gateBtn; }
       }
       var retryBtn = document.querySelector("#unity-load-error-retry");
       if (retryBtn) retryBtn.onclick = function () { location.reload(); };
@@ -328,11 +352,16 @@
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
           document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+          // Mirror progress onto the branded load/terms screen's bar.
+          var gf = document.getElementById("crodino-gate-bar-full");
+          if (gf) gf.style.width = 100 * progress + "%";
         }).then((unityInstance) => {
 
           window.unityInstance = unityInstance;
 
           document.querySelector("#unity-loading-bar").style.display = "none";
+          // Game is ready: enable the Play CTA on the branded screen.
+          setGateReady();
 
           windowResizeEvent();
 

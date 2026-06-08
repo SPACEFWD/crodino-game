@@ -113,7 +113,11 @@
         };
         var lang = "en";
         try {
-          var l = (navigator.language || "en").toLowerCase();
+          // When embedded, the parent site passes its selected language via
+          // ?lang= (e.g. ?lang=fr). Honour that first; otherwise fall back to the
+          // browser language so the standalone game still localises on its own.
+          var q = (new URLSearchParams(window.location.search).get("lang") || "").toLowerCase();
+          var l = q || (navigator.language || "en").toLowerCase();
           if (l.indexOf("fr") === 0) lang = "fr";
           else if (l.indexOf("nl") === 0) lang = "nl";
         } catch (e) {}

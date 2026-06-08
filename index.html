@@ -58,8 +58,9 @@
             loading: "The game is loading…",
             loadFailTitle: "Oops — couldn't load the game",
             loadFailText: "Your connection dropped while the game was loading. Check your connection and try again.",
-            crashTitle: "Oops — something went wrong",
-            crashText: "The game hit a snag. Please reload to keep playing.",
+            crashTitle: "Thanks for playing!",
+            crashText: "Your score has been saved. Tap below to play again.",
+            crashBtn: "Play again",
             glTitle: "Display needs a refresh",
             glText: "The game's graphics reset. Please reload to keep playing.",
             retry: "Try again"
@@ -68,8 +69,9 @@
             loading: "Le jeu se charge…",
             loadFailTitle: "Oups — le jeu n'a pas pu se charger",
             loadFailText: "La connexion a été interrompue pendant le chargement. Vérifiez votre connexion et réessayez.",
-            crashTitle: "Oups — un problème est survenu",
-            crashText: "Le jeu a rencontré un souci. Veuillez recharger pour continuer à jouer.",
+            crashTitle: "Merci d'avoir joué !",
+            crashText: "Ton score a été enregistré. Touche ci-dessous pour rejouer.",
+            crashBtn: "Rejouer",
             glTitle: "L'affichage doit être actualisé",
             glText: "L'affichage du jeu a été réinitialisé. Veuillez recharger pour continuer à jouer.",
             retry: "Réessayer"
@@ -78,8 +80,9 @@
             loading: "De game wordt geladen…",
             loadFailTitle: "Oeps — de game kon niet laden",
             loadFailText: "Je verbinding werd onderbroken tijdens het laden. Controleer je verbinding en probeer opnieuw.",
-            crashTitle: "Oeps — er ging iets mis",
-            crashText: "De game liep vast. Herlaad om verder te spelen.",
+            crashTitle: "Bedankt voor het spelen!",
+            crashText: "Je score is opgeslagen. Tik hieronder om opnieuw te spelen.",
+            crashBtn: "Opnieuw spelen",
             glTitle: "Beeld moet vernieuwd worden",
             glText: "Het beeld van de game is gereset. Herlaad om verder te spelen.",
             retry: "Opnieuw proberen"
@@ -108,8 +111,10 @@
             try {
               var t = document.querySelector("#unity-load-error .ule-title");
               var x = document.querySelector("#unity-load-error .ule-text");
+              var b = document.getElementById("unity-load-error-retry");
               if (t) t.textContent = T.crashTitle;
               if (x) x.textContent = T.crashText;
+              if (b) b.textContent = T.crashBtn || T.retry;
               if (typeof showLoadError === "function") showLoadError();
             } catch (e) {}
             return;

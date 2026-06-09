@@ -464,6 +464,10 @@
 
     function enableAnalytics()
     {
+      // When embedded we forward events to the parent (see window.LogEvent) and
+      // never track in-iframe — a cross-origin iframe's analytics storage is
+      // blocked by browsers, so initialising it here would only add noise.
+      if (isEmbedded) return;
       if (analytics || !analyticsConsent) return;
       try
       {
@@ -527,10 +531,31 @@
         catch (e) { console.error("Invalid JSON params", e); paramsObj = null; }
       }
 
-      // Send directly to GA4 (measurementId G-GMBEQ54NKN) via in-iframe Firebase
-      // Analytics, whether embedded or standalone. Per campaign decision this is
-      // UNGATED (analyticsConsent defaults to true above), so events reach the GA4
-      // property without the parent-side Cookiebot consent handshake.
+      // EMBEDDED (the normal case on the website): a cross-origin iframe has its
+      // analytics storage blocked by browsers, so an in-iframe Firebase send
+      // silently fails. Forward the event UP to the parent page, which records it
+      // first-party to GA4 (G-GMBEQ54NKN) — reliable in every browser. The parent
+      // validates our origin before accepting, so posting to "*" is safe here
+      // (the payload is just non-sensitive analytics event names/params).
+      if (isEmbedded)
+      {
+        try
+        {
+          window.parent.postMessage({
+            type: "crodino-game-event",
+            name: String(eventName),
+            params: paramsObj || {}
+          }, "*");
+          console.log("Forwarded event to parent:", eventName, paramsObj || "");
+        }
+        catch (e)
+        {
+          console.error("LogEvent forward error:", e);
+        }
+        return;
+      }
+
+      // STANDALONE (game opened directly = first-party): send in-iframe via Firebase.
       if (!analytics)
       {
         return; // analytics failed to initialise

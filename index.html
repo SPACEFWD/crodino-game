@@ -453,7 +453,7 @@
     ];
 
     let analytics = null;          // not initialised until consent is granted
-    let analyticsConsent = false;
+    let analyticsConsent = true;   // UNGATED (campaign decision): game analytics send regardless of consent
 
     // When embedded (the normal case on the website), the game does NOT track
     // in-iframe — Safari/Firefox block third-party storage. Instead it forwards
@@ -527,22 +527,13 @@
         catch (e) { console.error("Invalid JSON params", e); paramsObj = null; }
       }
 
-      // Embedded: forward to the first-party parent page. The parent records the
-      // event (gated by Cookiebot consent) -> reliable in all browsers incl. Safari.
-      if (isEmbedded)
+      // Send directly to GA4 (measurementId G-GMBEQ54NKN) via in-iframe Firebase
+      // Analytics, whether embedded or standalone. Per campaign decision this is
+      // UNGATED (analyticsConsent defaults to true above), so events reach the GA4
+      // property without the parent-side Cookiebot consent handshake.
+      if (!analytics)
       {
-        ALLOWED_PARENT_ORIGINS.forEach(function (origin)
-        {
-          try { window.parent.postMessage({ type: "track", event: eventName, params: paramsObj }, origin); }
-          catch (e) {}
-        });
-        return;
-      }
-
-      // Standalone: use in-iframe Firebase Analytics, gated by ?analyticsConsent=granted.
-      if (!analyticsConsent || !analytics)
-      {
-        return; // no consent -> do not track
+        return; // analytics failed to initialise
       }
       try
       {

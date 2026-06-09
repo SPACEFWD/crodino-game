@@ -31,8 +31,8 @@ html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden;
    artwork's wide margins mean cover's side-crop doesn't touch the logo/headline at
    landscape ratios. Controls sit on a SOFT gradient scrim (transparent -> yellow)
    rather than a hard rectangle, so there is no visible edge cutting the image. */
-#crodino-gate { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; box-sizing: border-box; font-family: arial, sans-serif; background-color: #FDC500; background-image: url("crodino-loadscreen.png"); background-repeat: no-repeat; background-position: center center; background-size: cover }
-#crodino-gate .cg-inner { width: 100%; box-sizing: border-box; text-align: center; padding: 52px clamp(16px, 5vw, 40px) clamp(18px, 4vh, 28px); background: linear-gradient(to top, rgba(253,197,0,0.97) 0%, rgba(253,197,0,0.92) 38%, rgba(253,197,0,0.55) 72%, rgba(253,197,0,0) 100%) }
+#crodino-gate { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; box-sizing: border-box; font-family: arial, sans-serif; background-color: #FFC600; background-image: url("crodino-loadscreen.png"); background-repeat: no-repeat; background-position: center center; background-size: contain }
+#crodino-gate .cg-inner { width: 100%; box-sizing: border-box; text-align: center; padding: 48px clamp(16px, 5vw, 40px) clamp(20px, 4vh, 30px); background: linear-gradient(to top, rgba(253,197,0,0.82) 0%, rgba(253,197,0,0.42) 52%, rgba(253,197,0,0) 88%) }
 #crodino-gate-text { color: #FFFFFF; font-size: clamp(13px, 2.6vw, 18px); line-height: 1.45; max-width: 620px; margin: 0 auto 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.18) }
 #crodino-gate-bar { width: min(72vw, 320px); height: 12px; margin: 0 auto 16px; background: rgba(255,255,255,0.35); border-radius: 999px; overflow: hidden }
 #crodino-gate-bar-full { height: 100%; width: 0; background: #FFFFFF; border-radius: 999px; transition: width 0.2s ease }

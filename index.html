@@ -33,12 +33,21 @@
     </div>
 
     <!-- Branded load + terms screen: a full-bleed background image with a bottom
-         band overlaying the sentence, the load bar and the Play CTA. The sentence
-         carries the 18+ confirmation (accepting the terms = confirming 18+), so no
-         separate age gate is needed. Dismissed by the Play button once loaded. -->
+         band overlaying the sentence, the load bar and the Play CTA. Playing
+         confirms agreement to the terms and conditions (which carry the age
+         requirement). Dismissed by the Play button once loaded. -->
     <div id="crodino-gate">
+      <!-- Rotate hint: shown only on touch devices held in portrait, where the
+           embed is cramped. Auto-hides the moment the phone is turned to
+           landscape (see updateRotateHint). Non-blocking — Play still works. -->
+      <div id="crodino-rotate" aria-hidden="true">
+        <div class="cg-rotate-card">
+          <img id="crodino-rotate-icon" src="TemplateData/rotate-phone.png" alt="" />
+          <div id="crodino-rotate-text">For the best experience, rotate your phone.</div>
+        </div>
+      </div>
       <div class="cg-inner">
-        <div id="crodino-gate-text">By playing, you confirm you are 18 or older and agree to the terms and conditions.</div>
+        <div id="crodino-gate-text">By playing, you confirm and agree to the terms and conditions.</div>
         <div id="crodino-gate-bar" aria-hidden="true">
           <div id="crodino-gate-bar-full"></div>
         </div>
@@ -78,9 +87,10 @@
             glTitle: "Display needs a refresh",
             glText: "The game's graphics reset. Please reload to keep playing.",
             retry: "Try again",
-            gateText: "By playing, you confirm you are 18 or older and agree to the terms and conditions.",
+            gateText: "By playing, you confirm and agree to the terms and conditions.",
             gateBtn: "Play",
-            gateLoading: "Loading…"
+            gateLoading: "Loading…",
+            rotate: "For the best experience, rotate your phone."
           },
           fr: {
             loading: "Le jeu se charge…",
@@ -92,9 +102,10 @@
             glTitle: "L'affichage doit être actualisé",
             glText: "L'affichage du jeu a été réinitialisé. Veuillez recharger pour continuer à jouer.",
             retry: "Réessayer",
-            gateText: "En jouant, tu confirmes avoir 18 ans ou plus et tu acceptes les conditions générales.",
+            gateText: "En jouant, tu confirmes et acceptes les conditions générales.",
             gateBtn: "Jouer",
-            gateLoading: "Chargement…"
+            gateLoading: "Chargement…",
+            rotate: "Pour une meilleure expérience, tourne ton téléphone."
           },
           nl: {
             loading: "De game wordt geladen…",
@@ -106,9 +117,10 @@
             glTitle: "Beeld moet vernieuwd worden",
             glText: "Het beeld van de game is gereset. Herlaad om verder te spelen.",
             retry: "Opnieuw proberen",
-            gateText: "Door te spelen, bevestig je dat je 18 jaar of ouder bent en ga je akkoord met de algemene voorwaarden.",
+            gateText: "Door te spelen, bevestig je en ga je akkoord met de algemene voorwaarden.",
             gateBtn: "Spelen",
-            gateLoading: "Laden…"
+            gateLoading: "Laden…",
+            rotate: "Voor de beste ervaring, draai je telefoon horizontaal."
           }
         };
         var lang = "en";
@@ -305,6 +317,31 @@
         var gtext = document.getElementById("crodino-gate-text");
         var gplay = document.getElementById("crodino-gate-play");
         if (gtext) gtext.textContent = T.gateText;
+        var grt = document.getElementById("crodino-rotate-text");
+        if (grt) grt.textContent = T.rotate;
+        // Show the "rotate your phone" hint only on touch devices currently held
+        // in portrait — the embed is letterboxed 16:9 there, so it's cramped.
+        // The iframe's own viewport is always landscape, so we read the *device*
+        // screen orientation (screen.orientation / screen dimensions), not a CSS
+        // media query. Hides itself the instant the phone turns to landscape.
+        function isMobilePortrait() {
+          var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+          if (!coarse) return false;
+          if (screen.orientation && typeof screen.orientation.type === "string") {
+            return screen.orientation.type.indexOf("portrait") === 0;
+          }
+          return (screen.height || window.innerHeight) > (screen.width || window.innerWidth);
+        }
+        function updateRotateHint() {
+          var el = document.getElementById("crodino-rotate");
+          if (el) el.style.display = isMobilePortrait() ? "flex" : "none";
+        }
+        if (screen.orientation && screen.orientation.addEventListener) {
+          screen.orientation.addEventListener("change", updateRotateHint);
+        }
+        window.addEventListener("orientationchange", updateRotateHint);
+        window.addEventListener("resize", updateRotateHint);
+        updateRotateHint();
         // Button stays disabled showing the "loading" label until Unity finishes
         // (see setGateReady); only then does it become the Play CTA.
         if (gplay) gplay.textContent = T.gateLoading || T.gateBtn;

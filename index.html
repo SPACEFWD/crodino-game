@@ -626,6 +626,7 @@
       try
       {
         await addDoc(collection(db, "scores"), { ...data });
+        window.__topScoresCache = null; // invalidate so the player sees their fresh score
         console.log("Score saved successfully");
       }
       catch (e)
@@ -640,17 +641,29 @@
 
     window.GetTopScores = async function ()
     {
+      // Repeat calls within a session (e.g. each level transition) return a
+      // cached result instead of re-querying Firestore. The cache is cleared on
+      // SaveScore so a player still sees their own fresh score. This, plus the
+      // limit(10) below, keeps daily Firestore reads well under the free quota
+      // (every leaderboard view used to read 50 docs).
+      const CACHE_TTL_MS = 60000;
+      if (window.__topScoresCache && (Date.now() - window.__topScoresCache.at) < CACHE_TTL_MS)
+      {
+        deliverScores(window.__topScoresCache.data);
+        return;
+      }
+
       try
       {
         console.log("GetTopScores llamado");
 
-        // Fetch a buffer of top scores, then rank precisely below. We sort
-        // client-side (rather than a 2-field Firestore orderBy) so no composite
-        // index is required in the Firebase console.
+        // Read only the top 10 by score (was 50). The board shows 10, so 10 is
+        // the minimum; ties are still broken by time client-side below. Boundary
+        // ties exactly at rank 10 are cosmetic only.
         const q = query(
           collection(db, "scores"),
           orderBy("score", "desc"),
-          limit(50)
+          limit(10)
         );
 
         const snapshot = await getDocs(q);
@@ -674,6 +687,8 @@
         });
 
         results = results.slice(0, 10);
+
+        window.__topScoresCache = { at: Date.now(), data: results };
 
         console.log("Scores:", results);
 

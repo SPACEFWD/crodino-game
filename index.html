@@ -439,7 +439,9 @@
       query,
       orderBy,
       limit,
-      getDocs
+      getDocs,
+      doc,
+      getDoc
     }
       from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -626,7 +628,15 @@
       try
       {
         await addDoc(collection(db, "scores"), { ...data });
-        window.__topScoresCache = null; // invalidate so the player sees their fresh score
+        // Remember this player's own entry (PII-free) so GetTopScores can show it
+        // immediately, and drop the cached board so it's re-read.
+        window.__lastSubmitted = {
+          name: data.name ?? null,
+          score: (typeof data.score === "number") ? data.score : Number(data.score) || 0,
+          time: (typeof data.time === "number") ? data.time : Number(data.time) || 0,
+          fit_profile: data.fit_profile ?? null
+        };
+        window.__topScoresCache = null;
         console.log("Score saved successfully");
       }
       catch (e)
@@ -657,23 +667,40 @@
       {
         console.log("GetTopScores llamado");
 
-        // Read only the top 10 by score (was 50). The board shows 10, so 10 is
-        // the minimum; ties are still broken by time client-side below. Boundary
-        // ties exactly at rank 10 are cosmetic only.
-        const q = query(
-          collection(db, "scores"),
-          orderBy("score", "desc"),
-          limit(10)
-        );
+        let results = null;
 
-        const snapshot = await getDocs(q);
-
-        let results = [];
-
-        snapshot.forEach(doc =>
+        // Primary path: ONE read of the denormalized leaderboard doc maintained
+        // by the dashboard (scores/_leaderboard, a JSON string). This replaces
+        // the old 50-doc query that was blowing the Firestore daily read quota.
+        try
         {
-          results.push(doc.data());
-        });
+          const lbSnap = await getDoc(doc(db, "scores", "_leaderboard"));
+          const raw = lbSnap.exists() ? lbSnap.data().top_json : null;
+          if (raw) results = JSON.parse(raw);
+        }
+        catch (e) { console.warn("leaderboard doc read failed, falling back:", e); }
+
+        // Fallback (e.g. doc not created yet): a small top-10 query.
+        if (!Array.isArray(results))
+        {
+          const q = query(
+            collection(db, "scores"),
+            orderBy("score", "desc"),
+            limit(10)
+          );
+          const snapshot = await getDocs(q);
+          results = [];
+          snapshot.forEach(d => results.push(d.data()));
+        }
+
+        // Show the player's own just-saved score right away, even if the shared
+        // board hasn't picked it up yet (it refreshes periodically).
+        if (window.__lastSubmitted)
+        {
+          const me = window.__lastSubmitted;
+          const already = results.some(r => r && r.name === me.name && r.score === me.score && r.time === me.time);
+          if (!already) results.push(me);
+        }
 
         // Ranking: highest score wins; ties broken by fastest time (lowest seconds).
         results.sort(function (a, b)

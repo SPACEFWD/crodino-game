@@ -34,6 +34,7 @@ html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden;
    the image. */
 #crodino-gate { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(100vw, calc(100vh * 1972 / 1146)); height: min(100vh, calc(100vw * 1146 / 1972)); z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; box-sizing: border-box; font-family: arial, sans-serif; background-color: #FDC500; background-image: url("crodino-loadscreen.png"); background-repeat: no-repeat; background-position: center center; background-size: contain }
 #crodino-gate .cg-inner { width: 100%; box-sizing: border-box; text-align: center; padding: 8px clamp(16px, 5vw, 40px) clamp(10px, 3vh, 20px); background: linear-gradient(to top, rgba(253,197,0,0.82) 0%, rgba(253,197,0,0.42) 52%, rgba(253,197,0,0) 88%) }
+#crodino-gate-ended { color: #FFFFFF; font-size: clamp(13px, 2.7vw, 17px); font-weight: bold; line-height: 1.3; max-width: 620px; margin: 0 auto 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.28) }
 #crodino-gate-text { color: #FFFFFF; font-size: clamp(10px, 2.2vw, 14px); line-height: 1.3; max-width: 620px; margin: 0 auto 9px; text-shadow: 0 1px 2px rgba(0,0,0,0.18) }
 #crodino-gate-bar { width: min(72vw, 300px); height: 8px; margin: 0 auto 11px; background: rgba(255,255,255,0.35); border-radius: 999px; overflow: hidden }
 #crodino-gate-bar-full { height: 100%; width: 0; background: #FFFFFF; border-radius: 999px; transition: width 0.2s ease }

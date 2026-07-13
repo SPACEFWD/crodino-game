@@ -47,6 +47,7 @@
         </div>
       </div>
       <div class="cg-inner">
+        <div id="crodino-gate-ended">The campaign has ended, so prizes can no longer be won. Play on just for fun.</div>
         <div id="crodino-gate-text">By playing, you confirm and agree to the terms and conditions.</div>
         <div id="crodino-gate-bar" aria-hidden="true">
           <div id="crodino-gate-bar-full"></div>
@@ -88,6 +89,7 @@
             glText: "The game's graphics reset. Please reload to keep playing.",
             retry: "Try again",
             gateText: "By playing, you confirm and agree to the terms and conditions.",
+            gateEnded: "The campaign has ended, so prizes can no longer be won. Play on just for fun.",
             gateBtn: "Play",
             gateLoading: "Loading…",
             rotate: "For the best experience, rotate your phone."
@@ -103,6 +105,7 @@
             glText: "L'affichage du jeu a été réinitialisé. Veuillez recharger pour continuer à jouer.",
             retry: "Réessayer",
             gateText: "En jouant, tu confirmes et acceptes les conditions générales.",
+            gateEnded: "La campagne est terminée : il n'est plus possible de gagner des prix. Joue quand même, juste pour le plaisir.",
             gateBtn: "Jouer",
             gateLoading: "Chargement…",
             rotate: "Pour une meilleure expérience, tourne ton téléphone."
@@ -118,6 +121,7 @@
             glText: "Het beeld van de game is gereset. Herlaad om verder te spelen.",
             retry: "Opnieuw proberen",
             gateText: "Door te spelen, bevestig je en ga je akkoord met de algemene voorwaarden.",
+            gateEnded: "De campagne is afgelopen, dus er zijn geen prijzen meer te winnen. Speel gerust verder, puur voor de fun.",
             gateBtn: "Spelen",
             gateLoading: "Laden…",
             rotate: "Voor de beste ervaring, draai je telefoon horizontaal."
@@ -317,6 +321,8 @@
         var gtext = document.getElementById("crodino-gate-text");
         var gplay = document.getElementById("crodino-gate-play");
         if (gtext) gtext.textContent = T.gateText;
+        var gended = document.getElementById("crodino-gate-ended");
+        if (gended) gended.textContent = T.gateEnded;
         var grt = document.getElementById("crodino-rotate-text");
         if (grt) grt.textContent = T.rotate;
         // Show the "rotate your phone" hint only on touch devices currently held
@@ -618,9 +624,17 @@
     // field schema (name, email, score, time, created_at, fit_profile,
     // ingredients_count, red_count, yellow_count, enemy_knockouts, ...) is owned
     // by the build and matches the Crodino team's Firestore rules.
+    // Campaign ended 12 July 2026 23:59 CEST. The game stays online to play for
+    // fun, but runs are no longer written to the leaderboard past this point.
+    const CAMPAIGN_END = Date.parse("2026-07-12T23:59:59+02:00");
+
     window.SaveScore = async function (jsonData)
     {
       console.log("SaveScore js:", jsonData);
+      if (Date.now() > CAMPAIGN_END) {
+        console.log("Campaign ended; score not saved (play-for-fun mode).");
+        return;
+      }
       let data = {};
       try { data = JSON.parse(jsonData); }
       catch (e) { console.error("Invalid JSON in SaveScore:", e); return; }
